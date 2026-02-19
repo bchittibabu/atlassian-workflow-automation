@@ -1,0 +1,69 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Example JIRA data file — copy and customize for your project",
+
+  "project": {
+    "key": "PROJ",
+    "default_component": ""
+  },
+
+  "options": {
+    "skip_fields": [],
+    "priority_mapping": {},
+    "rate_limit_seconds": 0.3,
+    "link_type": "Blocks"
+  },
+
+  "existing_issues": {},
+
+  "epics": [
+    {
+      "id": "EPIC-01",
+      "summary": "My Feature Epic",
+      "epic_name": "My Feature",
+      "priority": "High",
+      "labels": ["feature", "q1-2026"],
+      "description": "Epic description here.\n\nSupports basic markdown:\n- **Bold text** for emphasis\n- ## Headings\n- ### Sub-headings\n- [ ] Checklist items"
+    }
+  ],
+
+  "tasks": [
+    {
+      "id": "1001",
+      "epic_id": "EPIC-01",
+      "type": "Task",
+      "summary": "Set up project scaffolding",
+      "priority": "High",
+      "story_points": 3,
+      "labels": ["setup"],
+      "component": "Backend",
+      "description": "Create the initial project structure.\n\n**Acceptance Criteria:**\n- [ ] Project compiles\n- [ ] CI pipeline runs"
+    },
+    {
+      "id": "1002",
+      "epic_id": "EPIC-01",
+      "type": "Story",
+      "summary": "Implement core feature",
+      "priority": "Medium",
+      "story_points": 8,
+      "labels": ["feature"],
+      "component": "Backend",
+      "description": "Implement the main feature logic.\n\n**Acceptance Criteria:**\n- [ ] Feature works end-to-end\n- [ ] Unit tests written\n- [ ] Code reviewed"
+    },
+    {
+      "id": "1003",
+      "epic_id": "EPIC-01",
+      "type": "Task",
+      "summary": "Write documentation",
+      "priority": "Low",
+      "story_points": 2,
+      "labels": ["docs"],
+      "enabled": false,
+      "description": "Write user-facing documentation.\n\nSet \"enabled\": false to skip during creation."
+    }
+  ],
+
+  "dependencies": [
+    {"blocker": "1001", "blocked": "1002", "_comment": "Scaffolding must be done before feature work"}
+  ]
+}
