@@ -1,0 +1,47 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Example Confluence data file — copy and customize for your project",
+
+  "space": {
+    "key": "ENG",
+    "id": ""
+  },
+
+  "options": {
+    "rate_limit_seconds": 0.5,
+    "update_message": "Updated by confluence_publish.py"
+  },
+
+  "existing_pages": {},
+
+  "pages": [
+    {
+      "id": "ROOT-01",
+      "title": "Engineering Wiki Home",
+      "parent_id": null,
+      "parent_title": null,
+      "labels": ["engineering", "home"],
+      "enabled": true,
+      "body_file": null,
+      "body": "# Engineering Wiki\n\nWelcome to the engineering wiki.\n\n## Quick Links\n\n- [Architecture](https://example.com/arch)\n- [Runbooks](https://example.com/runbooks)\n\n## Team\n\n| Name | Role |\n|------|------|\n| Alice | Lead |\n| Bob | Senior |"
+    },
+    {
+      "id": "PAGE-01",
+      "title": "Architecture Overview",
+      "parent_id": "ROOT-01",
+      "parent_title": null,
+      "labels": ["architecture"],
+      "enabled": true,
+      "body_file": null,
+      "body": "# Architecture Overview\n\nThis page describes the system architecture.\n\n## Components\n\n1. API Gateway\n2. Auth Service\n3. Data Store\n\n## Code Example\n\n```python\ndef hello():\n    print(\"Hello, World!\")\n```\n\n> **Note:** Keep this page updated when architecture changes.\n\n**Acceptance Criteria:**\n- [ ] Diagram is current\n- [ ] All services listed\n- [x] Reviewed by team"
+    },
+    {
+      "id": "PAGE-02",
+      "title": "Deferred Page",
+      "parent_id": "ROOT-01",
+      "labels": ["draft"],
+      "enabled": false,
+      "body": "This page is disabled and will not be created unless --include-disabled is used."
+    }
+  ]
+}
