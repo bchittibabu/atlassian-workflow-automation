@@ -193,7 +193,7 @@ class JiraClient:
 
     # ── Creation ──
 
-    def create_issue_single(self, issue_data, skip_fields=None, priority_mapping=None):
+    def create_issue_single(self, issue_data, skip_fields=None, priority_mapping=None, extra_fields=None):
         """Create a single JIRA issue using single-issue endpoint."""
         if self.config.dry_run:
             self._dry_run_counter += 1
@@ -201,15 +201,15 @@ class JiraClient:
             print(f"  [DRY RUN] Would create: {issue_data['summary']}")
             return key
 
-        payload = self._build_payload(issue_data, skip_fields, priority_mapping)
+        payload = self._build_payload(issue_data, skip_fields, priority_mapping, extra_fields)
         result = self._post("issue", {"fields": payload})
         return result.get("key", "UNKNOWN")
 
-    def _build_payload(self, issue_data, skip_fields=None, priority_mapping=None):
+    def _build_payload(self, issue_data, skip_fields=None, priority_mapping=None, extra_fields=None):
         """Build JIRA API payload from issue data."""
         skip = set(skip_fields or [])
-        custom_fields = self.get_custom_fields()
-        sp_field = custom_fields.get("story_points", "customfield_10016")
+        field_map = self.get_custom_fields()
+        sp_field = field_map.get("story_points", "customfield_10016")
 
         payload = {
             "project": {"key": self.config.project_key},
@@ -243,6 +243,10 @@ class JiraClient:
         # Epic name (for epic issue type)
         if "epic_name" not in skip and issue_data.get("type") == "Epic" and "epic_name" in issue_data:
             payload["customfield_10011"] = issue_data["epic_name"]
+
+        # Extra custom fields (e.g. {"customfield_10472": {"id": "10593"}})
+        if extra_fields:
+            payload.update(extra_fields)
 
         return payload
 
@@ -351,6 +355,7 @@ def load_data_file(path):
         "priority_mapping": options.get("priority_mapping", {}),
         "rate_limit": options.get("rate_limit_seconds", 0.3),
         "link_type": options.get("link_type", "Blocks"),
+        "custom_fields": options.get("custom_fields", {}),
     }
 
 
@@ -540,6 +545,7 @@ def main():
     priority_mapping = data["priority_mapping"]
     rate_limit = data["rate_limit"]
     link_type = data["link_type"]
+    custom_fields = data.get("custom_fields", {})
 
     # ── Filter tasks ──
     if args.include_disabled:
@@ -564,7 +570,7 @@ def main():
     for epic in epics_to_create:
         print(f"\n  Creating Epic: {epic['summary']}...")
         try:
-            key = client.create_issue_single(epic, skip_fields, priority_mapping)
+            key = client.create_issue_single(epic, skip_fields, priority_mapping, custom_fields)
             id_to_key[epic["id"]] = key
             print(f"  -> Created: {key}")
         except Exception as e:
@@ -589,7 +595,7 @@ def main():
 
         print(f"\n  Creating {task.get('type', 'Task')}: {task['summary']}...")
         try:
-            key = client.create_issue_single(task, skip_fields, priority_mapping)
+            key = client.create_issue_single(task, skip_fields, priority_mapping, custom_fields)
             id_to_key[task["id"]] = key
             print(f"  -> Created: {key} (Epic: {epic_key or 'none'})")
         except Exception as e:

@@ -313,6 +313,50 @@ def _inline_format(text):
     return text
 
 
+def _join_multiline_links(text):
+    """Pre-process markdown to join multi-line link syntax into single lines."""
+    lines = text.split('\n')
+    result = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if '[' in line:
+            brackets = line.count('[') - line.count(']')
+            while brackets > 0 and i + 1 < len(lines):
+                i += 1
+                continuation = lines[i].strip()
+                line = line.rstrip() + ' ' + continuation
+                brackets = line.count('[') - line.count(']')
+        result.append(line)
+        i += 1
+    return '\n'.join(result)
+
+
+def _build_nested_ul(items):
+    """Convert list of (indent_level, text) tuples into nested <ul><li> HTML."""
+    if not items:
+        return ""
+    indent_vals = sorted(set(ind for ind, _ in items))
+    depth_map = {v: i for i, v in enumerate(indent_vals)}
+    result = []
+    depth = -1
+    for indent, text in items:
+        target = depth_map[indent]
+        while depth < target:
+            result.append("<ul>")
+            depth += 1
+        while depth > target:
+            result.append("</li></ul>")
+            depth -= 1
+        if depth == target and result and not result[-1].endswith("<ul>"):
+            result.append("</li>")
+        result.append(f"<li>{_inline_format(text)}")
+    while depth >= 0:
+        result.append("</li></ul>")
+        depth -= 1
+    return "".join(result)
+
+
 def _make_code_macro(code, language=""):
     """Build a Confluence code block macro."""
     lang_param = ""
@@ -345,6 +389,7 @@ def markdown_to_storage(text):
     if not text:
         return ""
 
+    text = _join_multiline_links(text)
     lines = text.split("\n")
     output = []
     i = 0
@@ -392,22 +437,30 @@ def markdown_to_storage(text):
             output.append(f"<blockquote><p>{quote_text}</p></blockquote>")
             continue
 
-        # Unordered list (consecutive - lines, including - [ ] checklists)
-        elif line.strip().startswith("- "):
-            list_items = []
-            while i < len(lines) and lines[i].strip().startswith("- "):
-                item = lines[i].strip()[2:]
-                # Checklist: - [ ] or - [x]
-                if item.startswith("[ ] "):
-                    item = "\u2610 " + item[4:]  # ballot box
-                elif item.startswith("[x] ") or item.startswith("[X] "):
-                    item = "\u2611 " + item[4:]  # checked ballot box
-                list_items.append(item)
-                i += 1
-            items_html = "".join(
-                f"<li>{_inline_format(it)}</li>" for it in list_items
-            )
-            output.append(f"<ul>{items_html}</ul>")
+        # Unordered list (supports nesting and blank lines between items)
+        elif re.match(r'^(\s*)- ', line):
+            items = []
+            while i < len(lines):
+                m = re.match(r'^(\s*)- (.+)$', lines[i])
+                if m:
+                    indent = len(m.group(1))
+                    item_text = m.group(2)
+                    if item_text.startswith("[ ] "):
+                        item_text = "\u2610 " + item_text[4:]
+                    elif item_text.startswith("[x] ") or item_text.startswith("[X] "):
+                        item_text = "\u2611 " + item_text[4:]
+                    items.append((indent, item_text))
+                    i += 1
+                    continue
+                if not lines[i].strip():
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines) and re.match(r'^\s*- ', lines[j]):
+                        i = j
+                        continue
+                break
+            output.append(_build_nested_ul(items))
             continue
 
         # Ordered list (consecutive 1. lines)
