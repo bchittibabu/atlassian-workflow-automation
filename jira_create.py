@@ -236,9 +236,12 @@ class JiraClient:
         if "components" not in skip and "component" in issue_data:
             payload["components"] = [{"name": issue_data["component"]}]
 
-        # Epic link (JIRA Cloud next-gen uses parent field)
+        # Epic link — next-gen uses parent; classic uses customfield_10014
         if "epic_key" in issue_data and issue_data["epic_key"]:
-            payload["parent"] = {"key": issue_data["epic_key"]}
+            if "parent" not in skip:
+                payload["parent"] = {"key": issue_data["epic_key"]}
+            elif "epic_link" not in skip:
+                payload["customfield_10014"] = issue_data["epic_key"]
 
         # Epic name (for epic issue type)
         if "epic_name" not in skip and issue_data.get("type") == "Epic" and "epic_name" in issue_data:
@@ -273,22 +276,17 @@ class JiraClient:
             if line.startswith("### "):
                 content.append({
                     "type": "heading", "attrs": {"level": 3},
-                    "content": [{"type": "text", "text": line[4:]}]
+                    "content": self._parse_inline_marks(line[4:])
                 })
             elif line.startswith("## "):
                 content.append({
                     "type": "heading", "attrs": {"level": 2},
-                    "content": [{"type": "text", "text": line[3:]}]
-                })
-            elif line.startswith("**") and line.endswith("**"):
-                content.append({
-                    "type": "paragraph",
-                    "content": [{"type": "text", "text": line.strip("*"), "marks": [{"type": "strong"}]}]
+                    "content": self._parse_inline_marks(line[3:])
                 })
             elif line.strip():
                 content.append({
                     "type": "paragraph",
-                    "content": [{"type": "text", "text": line}]
+                    "content": self._parse_inline_marks(line)
                 })
 
         if current_list_items:
@@ -297,6 +295,20 @@ class JiraClient:
         return {"version": 1, "type": "doc", "content": content or [
             {"type": "paragraph", "content": [{"type": "text", "text": text}]}
         ]}
+
+    def _parse_inline_marks(self, text):
+        """Parse inline **bold** markers and return ADF text nodes."""
+        import re
+        parts = re.split(r'(\*\*[^*]+\*\*)', text)
+        nodes = []
+        for part in parts:
+            if not part:
+                continue
+            if part.startswith("**") and part.endswith("**"):
+                nodes.append({"type": "text", "text": part[2:-2], "marks": [{"type": "strong"}]})
+            else:
+                nodes.append({"type": "text", "text": part})
+        return nodes or [{"type": "text", "text": text}]
 
     def _make_bullet_list(self, items):
         return {
